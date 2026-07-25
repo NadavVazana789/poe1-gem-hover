@@ -1,9 +1,12 @@
 // DOM finding (verified live via Selenium on multiple maxroll guides):
 // maxroll marks every item reference as `<span class="poe-item" data-poe-text="Name">`.
 // maxroll is a React SPA that REPLACES gem nodes on hover, so per-element listeners
-// get lost. We use event delegation on `document` instead: check whatever is under
-// the cursor at event time. Match on maxroll's data-poe-text (fallback textContent);
-// the gem-name gate excludes uniques/bases, which also use .poe-item.
+// get lost. We use event delegation on `document` (capture phase) instead.
+// The panel is PINNED to a fixed screen corner (not cursor-following): maxroll shows
+// its own big native tooltip at the cursor, so competing there hides ours. A fixed,
+// high-contrast corner panel is always visible and never overlaps maxroll's tooltip.
+// Match on maxroll's data-poe-text (fallback textContent); the gem-name gate excludes
+// uniques/bases, which also use .poe-item.
 const ALIASES = {
   // 'maxroll name': 'wiki page name'   // fill in as mismatches are found
 };
@@ -40,50 +43,35 @@ function gemNameOf(el) {
     return gems[key] ? { key, entry: gems[key] } : null;
   }
 
-  function fill(key, entry) {
+  function show(key, entry) {
+    clearTimeout(hideTimer);
+    currentName = key;
     tip.textContent = '';
-    for (const line of GemFormat.formatTooltip(key, entry)) {
+    const lines = GemFormat.formatTooltip(key, entry);
+    lines.forEach((line, i) => {
       const div = document.createElement('div');
       div.textContent = line;
+      if (i === 0) div.className = 'poe1-gh-name';
       tip.appendChild(div);
-    }
+    });
     tip.hidden = false;
-  }
-
-  // position near the cursor (fixed), clamped to the viewport
-  function move(x, y) {
-    const w = tip.offsetWidth || 240;
-    const h = tip.offsetHeight || 60;
-    let left = x + 14;
-    let top = y + 16;
-    if (left + w > window.innerWidth) left = x - w - 14;
-    if (top + h > window.innerHeight) top = y - h - 16;
-    tip.style.left = `${Math.max(0, left)}px`;
-    tip.style.top = `${Math.max(0, top)}px`;
   }
 
   function hide() { tip.hidden = true; currentName = null; }
 
-  // Delegated: survives React re-renders because it inspects the live cursor target.
+  // Delegated (capture phase) so it survives React re-renders and can't be
+  // blocked by maxroll's own stopPropagation on the element.
   document.addEventListener('mouseover', (e) => {
     const el = e.target.closest && e.target.closest('.poe-item');
     if (!el) return;
     const hit = lookup(gemNameOf(el));
-    if (!hit) return;
-    clearTimeout(hideTimer);
-    currentName = hit.key;
-    fill(hit.key, hit.entry);
-    move(e.clientX, e.clientY);
-  }, true);
-
-  document.addEventListener('mousemove', (e) => {
-    if (!tip.hidden) move(e.clientX, e.clientY);
+    if (hit) show(hit.key, hit.entry);
   }, true);
 
   document.addEventListener('mouseout', (e) => {
     const el = e.target.closest && e.target.closest('.poe-item');
-    if (el && lookup(gemNameOf(el)) && lookup(gemNameOf(el)).key === currentName) {
-      hideTimer = setTimeout(hide, 120);
-    }
+    if (!el) return;
+    const hit = lookup(gemNameOf(el));
+    if (hit && hit.key === currentName) hideTimer = setTimeout(hide, 200);
   }, true);
 })();
