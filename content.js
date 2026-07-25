@@ -13,9 +13,12 @@ const ALIASES = {
 };
 
 async function loadGems() {
-  // Bundled snapshot is the source of truth: the complete data lives on
-  // poewiki.net, which is Cloudflare-walled and not fetchable at runtime, so it's
-  // scraped at build time (tools/fetch-poewiki.py) and baked into data/gems.json.
+  // Prefer the auto-updated copy the background worker pulls from GitHub; fall back
+  // to the bundled snapshot (first run, or if the network is unavailable).
+  try {
+    const c = await browser.storage.local.get('gems');
+    if (c.gems && Object.keys(c.gems).length > 100) return c.gems;
+  } catch (e) { /* storage unavailable — use bundle */ }
   const url = browser.runtime.getURL('data/gems.json');
   return (await fetch(url)).json();
 }
@@ -28,7 +31,7 @@ function makeTooltipEl() {
   return el;
 }
 
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 
 // maxroll renders gems two ways: inline prose as `.poe-item[data-poe-text]`, and
 // the skills-widget entries as `div[class*="SkillEntry"]` (CSS-module hashed).
