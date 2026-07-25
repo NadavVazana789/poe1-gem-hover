@@ -1,12 +1,13 @@
-// DOM finding: maxroll build guides render gem names as text inside various leaf
-// elements. We bind hover to leaf elements whose exact trimmed text is a known gem
-// name (from the data set). SELECTOR is refined from live-DOM inspection.
+// DOM finding (verified live via Selenium against a maxroll build guide):
+// maxroll marks every item reference as `<span class="poe-item">Name</span>`.
+// We bind those whose exact text is a known gem name (the name gate excludes
+// uniques/bases, which also use .poe-item).
 // Aliases map maxroll's on-page name -> Fandom page name where they differ.
 const ALIASES = {
   // 'maxroll name': 'wiki page name'   // fill in as mismatches are found
 };
 
-const SELECTOR = 'a, span, strong, b, li, td, p'; // refined per live DOM inspection
+const SELECTOR = '.poe-item'; // maxroll's item-reference marker
 
 async function loadGems() {
   const cached = await browser.storage.local.get('gems');
