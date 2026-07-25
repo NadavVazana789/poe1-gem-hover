@@ -30,7 +30,7 @@ function gemNameOf(el) {
   return (el.dataset && el.dataset.poeText) || el.textContent.trim();
 }
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 (async () => {
   const gems = await loadGems();
@@ -70,6 +70,19 @@ const VERSION = '1.2.0';
   }
 
   idle();
+
+  // TEMP DIAGNOSTIC: report what each hover actually lands on, in the live page.
+  const dbg = document.createElement('div');
+  dbg.id = 'poe1-gh-debug';
+  dbg.textContent = 'dbg: (move mouse over a gem)';
+  document.body.appendChild(dbg);
+  document.addEventListener('mouseover', (e) => {
+    const t = e.target;
+    const poe = t.closest && t.closest('.poe-item');
+    const nm = poe ? gemNameOf(poe) : '';
+    const gem = poe ? (lookup(nm) ? `KNOWN:${nm}` : `poe-unknown:${nm}`) : 'no';
+    dbg.textContent = `dbg: ${t.tagName}.${(t.className || '').toString().slice(0, 22)} | poe-item:${poe ? 'yes' : 'no'} | gem:${gem}`;
+  }, true);
 
   // Delegated (capture phase) so it survives React re-renders and can't be
   // blocked by maxroll's own stopPropagation on the element.
