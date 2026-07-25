@@ -70,31 +70,34 @@ def main():
         for g in ground[:10]:
             print("  ", g)
 
-        # 2. What content.js bound.
-        bound = driver.execute_script(
-            "return [...document.querySelectorAll('[data-poe-gem-bound]')].map(e => e.textContent.trim());"
+        # 2 + 3. Delegated hover test: dispatch a bubbling mouseover on a VISIBLE
+        # .poe-item gem (as a real cursor would), then read the tooltip. Also
+        # simulate a React node-swap first to prove delegation survives it.
+        result = driver.execute_script(
+            """
+            const names = new Set(arguments[0]);
+            const items = [...document.querySelectorAll('.poe-item')].filter(el => {
+              const r = el.getBoundingClientRect();
+              const n = (el.dataset && el.dataset.poeText) || el.textContent.trim();
+              return r.width > 0 && r.height > 0 && names.has(n);
+            });
+            if (!items.length) return {ok:false, reason:'no visible gem .poe-item'};
+            const el = items[0];
+            const n = (el.dataset && el.dataset.poeText) || el.textContent.trim();
+            // React-swap simulation: replace node with an identical clone
+            const clone = el.cloneNode(true);
+            el.parentNode.replaceChild(clone, el);
+            const r = clone.getBoundingClientRect();
+            const opts = {bubbles:true, clientX:Math.round(r.x+r.width/2), clientY:Math.round(r.y+r.height/2)};
+            clone.dispatchEvent(new MouseEvent('mouseover', opts));
+            const tip = document.getElementById('poe1-gem-hover-tip');
+            return {ok:true, name:n, visibleGems:items.length,
+                    hidden: tip ? tip.hidden : 'no-tip',
+                    text: tip ? tip.innerText : null};
+            """,
+            gem_names,
         )
-        print(f"\nCONTENT-SCRIPT bound elements: {len(bound)}")
-        print("  sample:", bound[:15])
-
-        # 3. Hover check on the first bound gem.
-        if bound:
-            tip = driver.execute_script(
-                """
-                const el = document.querySelector('[data-poe-gem-bound]');
-                el.dispatchEvent(new MouseEvent('mouseenter', {bubbles:true}));
-                const tip = document.getElementById('poe1-gem-hover-tip');
-                return {name: el.textContent.trim(), hidden: tip ? tip.hidden : 'no-tip',
-                        text: tip ? tip.innerText : null};
-                """
-            )
-            print("\nHOVER CHECK:", tip)
-        else:
-            print("\nHOVER CHECK: skipped (nothing bound)")
-
-        # Report gems present on page but NOT bound (misses).
-        missed = sorted(set(g["name"] for g in ground) - set(bound))
-        print(f"\nMISSED (on page, not bound): {missed[:20]}")
+        print("\nDELEGATED HOVER CHECK (after node swap):", result)
     finally:
         driver.quit()
 

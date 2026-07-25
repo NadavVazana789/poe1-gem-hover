@@ -1,13 +1,12 @@
 // DOM finding (verified live via Selenium on multiple maxroll guides):
-// maxroll marks every item reference as `<span class="poe-item">Name</span>`.
-// We bind those whose exact text is a known gem name (the name gate excludes
-// uniques/bases, which also use .poe-item).
-// Aliases map maxroll's on-page name -> Fandom page name where they differ.
+// maxroll marks every item reference as `<span class="poe-item" data-poe-text="Name">`.
+// maxroll is a React SPA that REPLACES gem nodes on hover, so per-element listeners
+// get lost. We use event delegation on `document` instead: check whatever is under
+// the cursor at event time. Match on maxroll's data-poe-text (fallback textContent);
+// the gem-name gate excludes uniques/bases, which also use .poe-item.
 const ALIASES = {
   // 'maxroll name': 'wiki page name'   // fill in as mismatches are found
 };
-
-const SELECTOR = '.poe-item'; // maxroll's item-reference marker
 
 async function loadGems() {
   const cached = await browser.storage.local.get('gems');
@@ -24,18 +23,22 @@ function makeTooltipEl() {
   return el;
 }
 
-function lookup(gems, rawName) {
-  const name = rawName.trim();
-  const key = ALIASES[name] || name;
-  return gems[key] ? { key, entry: gems[key] } : null;
+function gemNameOf(el) {
+  return (el.dataset && el.dataset.poeText) || el.textContent.trim();
 }
 
 (async () => {
   const gems = await loadGems();
-  const names = new Set(Object.keys(gems));
   const tip = makeTooltipEl();
   let hideTimer;
-  console.log(`[PoE1 Gem Hover] active — ${names.size} gems loaded`);
+  let currentName = null;
+  console.log(`[PoE1 Gem Hover] active — ${Object.keys(gems).length} gems loaded`);
+
+  function lookup(rawName) {
+    const name = (rawName || '').trim();
+    const key = ALIASES[name] || name;
+    return gems[key] ? { key, entry: gems[key] } : null;
+  }
 
   function fill(key, entry) {
     tip.textContent = '';
@@ -59,32 +62,28 @@ function lookup(gems, rawName) {
     tip.style.top = `${Math.max(0, top)}px`;
   }
 
-  function attach() {
-    for (const el of document.querySelectorAll(SELECTOR)) {
-      if (el.dataset.poeGemBound) continue;
-      if (el.children.length > 0) continue; // leaf only
-      const text = el.textContent.trim();
-      if (!text || (!names.has(text) && !ALIASES[text])) continue;
-      el.dataset.poeGemBound = '1';
-      el.addEventListener('mouseenter', (e) => {
-        const hit = lookup(gems, text);
-        if (!hit) return;
-        clearTimeout(hideTimer);
-        fill(hit.key, hit.entry);
-        move(e.clientX, e.clientY);
-      });
-      el.addEventListener('mousemove', (e) => { if (!tip.hidden) move(e.clientX, e.clientY); });
-      el.addEventListener('mouseleave', () => {
-        hideTimer = setTimeout(() => { tip.hidden = true; }, 100);
-      });
-    }
-  }
+  function hide() { tip.hidden = true; currentName = null; }
 
-  attach();
-  // maxroll is a SPA; re-scan on DOM changes (debounced).
-  let pending;
-  new MutationObserver(() => {
-    clearTimeout(pending);
-    pending = setTimeout(attach, 300);
-  }).observe(document.body, { childList: true, subtree: true });
+  // Delegated: survives React re-renders because it inspects the live cursor target.
+  document.addEventListener('mouseover', (e) => {
+    const el = e.target.closest && e.target.closest('.poe-item');
+    if (!el) return;
+    const hit = lookup(gemNameOf(el));
+    if (!hit) return;
+    clearTimeout(hideTimer);
+    currentName = hit.key;
+    fill(hit.key, hit.entry);
+    move(e.clientX, e.clientY);
+  }, true);
+
+  document.addEventListener('mousemove', (e) => {
+    if (!tip.hidden) move(e.clientX, e.clientY);
+  }, true);
+
+  document.addEventListener('mouseout', (e) => {
+    const el = e.target.closest && e.target.closest('.poe-item');
+    if (el && lookup(gemNameOf(el)) && lookup(gemNameOf(el)).key === currentName) {
+      hideTimer = setTimeout(hide, 120);
+    }
+  }, true);
 })();
