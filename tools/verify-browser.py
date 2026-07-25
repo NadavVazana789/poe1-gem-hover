@@ -18,10 +18,12 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GUIDE_URL = "https://maxroll.gg/poe/build-guides/cold-dot-elementalist/skill-gems-passive-tree"
+DEFAULT_GUIDE = "https://maxroll.gg/poe/build-guides/cold-dot-elementalist/skill-gems-passive-tree"
 
 def main():
     headful = "--headful" in sys.argv
+    urls = [a for a in sys.argv[1:] if a.startswith("http")]
+    guide_url = urls[0] if urls else DEFAULT_GUIDE
     gems = json.load(open(os.path.join(ROOT, "data", "gems.json"), encoding="utf-8"))
     gem_names = list(gems.keys())
 
@@ -32,33 +34,40 @@ def main():
     try:
         driver.install_addon(ROOT, temporary=True)
         driver.set_page_load_timeout(90)
-        driver.get(GUIDE_URL)
+        driver.get(guide_url)
         time.sleep(8)  # let React render + content script scan
 
         title = driver.title
-        print("PAGE TITLE:", title)
+        print("PAGE:", guide_url, "\nTITLE:", title)
 
-        # 1. Ground-truth: leaf elements whose exact text is a known gem name.
+        # 1. Ground-truth: INNERMOST element whose full text == a known gem name
+        #    (allows links/spans with child icons — not just bare leaves).
         ground = driver.execute_script(
             """
             const names = new Set(arguments[0]);
             const out = [];
             for (const el of document.querySelectorAll('*')) {
-              if (el.children.length > 0) continue;
               const t = (el.textContent || '').trim();
-              if (names.has(t)) {
-                out.push({name: t, tag: el.tagName,
-                          cls: el.className && el.className.toString().slice(0,60),
-                          parentTag: el.parentElement && el.parentElement.tagName,
-                          parentCls: el.parentElement && el.parentElement.className.toString().slice(0,60)});
-              }
+              if (!names.has(t)) continue;
+              // innermost: no child element also exactly equals the gem name
+              if ([...el.children].some(c => (c.textContent||'').trim() === t)) continue;
+              out.push({name: t, tag: el.tagName,
+                        cls: (el.className && el.className.toString().slice(0,50)) || '',
+                        childTags: [...el.children].map(c=>c.tagName).join(','),
+                        href: el.getAttribute && (el.getAttribute('href')||'')});
             }
             return out;
             """,
             gem_names,
         )
-        print(f"\nGROUND-TRUTH gem leaves found: {len(ground)}")
-        for g in ground[:15]:
+        print(f"\nGROUND-TRUTH gem-name elements found: {len(ground)}")
+        # class histogram — reveals the selector to use
+        from collections import Counter
+        hist = Counter((g["tag"] + "." + g["cls"]) for g in ground)
+        print("  tag.class histogram:")
+        for k, v in hist.most_common(12):
+            print(f"    {v:3d}  {k}")
+        for g in ground[:10]:
             print("  ", g)
 
         # 2. What content.js bound.

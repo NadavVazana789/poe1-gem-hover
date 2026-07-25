@@ -1,4 +1,4 @@
-// DOM finding (verified live via Selenium against a maxroll build guide):
+// DOM finding (verified live via Selenium on multiple maxroll guides):
 // maxroll marks every item reference as `<span class="poe-item">Name</span>`.
 // We bind those whose exact text is a known gem name (the name gate excludes
 // uniques/bases, which also use .poe-item).
@@ -35,9 +35,9 @@ function lookup(gems, rawName) {
   const names = new Set(Object.keys(gems));
   const tip = makeTooltipEl();
   let hideTimer;
+  console.log(`[PoE1 Gem Hover] active — ${names.size} gems loaded`);
 
-  function show(el, key, entry) {
-    clearTimeout(hideTimer);
+  function fill(key, entry) {
     tip.textContent = '';
     for (const line of GemFormat.formatTooltip(key, entry)) {
       const div = document.createElement('div');
@@ -45,22 +45,35 @@ function lookup(gems, rawName) {
       tip.appendChild(div);
     }
     tip.hidden = false;
-    const r = el.getBoundingClientRect();
-    tip.style.left = `${window.scrollX + r.left}px`;
-    tip.style.top = `${window.scrollY + r.bottom + 4}px`;
+  }
+
+  // position near the cursor (fixed), clamped to the viewport
+  function move(x, y) {
+    const w = tip.offsetWidth || 240;
+    const h = tip.offsetHeight || 60;
+    let left = x + 14;
+    let top = y + 16;
+    if (left + w > window.innerWidth) left = x - w - 14;
+    if (top + h > window.innerHeight) top = y - h - 16;
+    tip.style.left = `${Math.max(0, left)}px`;
+    tip.style.top = `${Math.max(0, top)}px`;
   }
 
   function attach() {
     for (const el of document.querySelectorAll(SELECTOR)) {
       if (el.dataset.poeGemBound) continue;
-      if (el.children.length > 0) continue; // leaf only — avoid wrapping paragraphs
+      if (el.children.length > 0) continue; // leaf only
       const text = el.textContent.trim();
       if (!text || (!names.has(text) && !ALIASES[text])) continue;
       el.dataset.poeGemBound = '1';
-      el.addEventListener('mouseenter', () => {
+      el.addEventListener('mouseenter', (e) => {
         const hit = lookup(gems, text);
-        if (hit) show(el, hit.key, hit.entry);
+        if (!hit) return;
+        clearTimeout(hideTimer);
+        fill(hit.key, hit.entry);
+        move(e.clientX, e.clientY);
       });
+      el.addEventListener('mousemove', (e) => { if (!tip.hidden) move(e.clientX, e.clientY); });
       el.addEventListener('mouseleave', () => {
         hideTimer = setTimeout(() => { tip.hidden = true; }, 100);
       });

@@ -1,5 +1,5 @@
 #poe1-gem-hover-tip {
-  position: absolute;
+  position: fixed;
   z-index: 2147483647;
   max-width: 320px;
   padding: 6px 9px;
