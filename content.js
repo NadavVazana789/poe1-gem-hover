@@ -27,7 +27,7 @@ function makeTooltipEl() {
   return el;
 }
 
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 
 // maxroll renders gems two ways: inline prose as `.poe-item[data-poe-text]`, and
 // the skills-widget entries as `div[class*="SkillEntry"]` (CSS-module hashed).
