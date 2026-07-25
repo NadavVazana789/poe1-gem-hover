@@ -26,11 +26,19 @@ function makeTooltipEl() {
   return el;
 }
 
-function gemNameOf(el) {
-  return (el.dataset && el.dataset.poeText) || el.textContent.trim();
-}
+const VERSION = '1.4.0';
 
-const VERSION = '1.3.0';
+// maxroll renders gems two ways: inline prose as `.poe-item[data-poe-text]`, and
+// the skills-widget entries as `div[class*="SkillEntry"]` (CSS-module hashed).
+const GEM_SEL = '.poe-item, [class*="SkillEntry"]';
+
+function gemNameOf(el) {
+  if (el.dataset && el.dataset.poeText) return el.dataset.poeText;
+  const nameEl = el.matches && el.matches('[class*="SkillEntry__name"]')
+    ? el
+    : (el.querySelector && el.querySelector('[class*="SkillEntry__name"]'));
+  return ((nameEl || el).textContent || '').trim();
+}
 
 (async () => {
   const gems = await loadGems();
@@ -71,30 +79,29 @@ const VERSION = '1.3.0';
 
   idle();
 
-  // TEMP DIAGNOSTIC: report what each hover actually lands on, in the live page.
+  // TEMP DIAGNOSTIC (one round): confirm the SkillEntry match in the live page.
   const dbg = document.createElement('div');
   dbg.id = 'poe1-gh-debug';
-  dbg.textContent = 'dbg: (move mouse over a gem)';
+  dbg.textContent = 'dbg: (hover a gem)';
   document.body.appendChild(dbg);
   document.addEventListener('mouseover', (e) => {
-    const t = e.target;
-    const poe = t.closest && t.closest('.poe-item');
-    const nm = poe ? gemNameOf(poe) : '';
-    const gem = poe ? (lookup(nm) ? `KNOWN:${nm}` : `poe-unknown:${nm}`) : 'no';
-    dbg.textContent = `dbg: ${t.tagName}.${(t.className || '').toString().slice(0, 22)} | poe-item:${poe ? 'yes' : 'no'} | gem:${gem}`;
+    const el = e.target.closest && e.target.closest(GEM_SEL);
+    const nm = el ? gemNameOf(el) : '';
+    const gem = el ? (lookup(nm) ? `KNOWN:${nm}` : `unknown:${nm}`) : 'no';
+    dbg.textContent = `dbg: ${e.target.tagName}.${(e.target.className || '').toString().slice(0, 22)} | match:${el ? 'yes' : 'no'} | gem:${gem}`;
   }, true);
 
   // Delegated (capture phase) so it survives React re-renders and can't be
   // blocked by maxroll's own stopPropagation on the element.
   document.addEventListener('mouseover', (e) => {
-    const el = e.target.closest && e.target.closest('.poe-item');
+    const el = e.target.closest && e.target.closest(GEM_SEL);
     if (!el) return;
     const hit = lookup(gemNameOf(el));
     if (hit) show(hit.key, hit.entry);
   }, true);
 
   document.addEventListener('mouseout', (e) => {
-    const el = e.target.closest && e.target.closest('.poe-item');
+    const el = e.target.closest && e.target.closest(GEM_SEL);
     if (!el) return;
     const hit = lookup(gemNameOf(el));
     if (hit && hit.key === currentName) hideTimer = setTimeout(idle, 200);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PoE1 Gem Hover",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Hover a skill gem on a maxroll.gg PoE1 build guide to see the earliest vendor purchase and free quest reward, by class.",
   "browser_specific_settings": { "gecko": { "id": "poe1-gem-hover@local" } },
   "permissions": ["storage", "alarms"],

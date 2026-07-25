@@ -31,13 +31,13 @@
   font-size: 12.5px;
   margin-bottom: 1px;
 }
-/* TEMP diagnostic readout */
+/* TEMP diagnostic readout (removed after confirmation) */
 #poe1-gh-debug {
   position: fixed;
   left: 72px;
   bottom: 78px;
   z-index: 2147483647;
-  max-width: 520px;
+  max-width: 560px;
   padding: 5px 9px;
   background: #1a1400;
   color: #ffd24d;
