@@ -1,12 +1,13 @@
-// DOM finding (verified live via Selenium on multiple maxroll guides):
-// maxroll marks every item reference as `<span class="poe-item" data-poe-text="Name">`.
-// maxroll is a React SPA that REPLACES gem nodes on hover, so per-element listeners
-// get lost. We use event delegation on `document` (capture phase) instead.
-// The panel is PINNED to a fixed screen corner (not cursor-following): maxroll shows
-// its own big native tooltip at the cursor, so competing there hides ours. A fixed,
-// high-contrast corner panel is always visible and never overlaps maxroll's tooltip.
-// Match on maxroll's data-poe-text (fallback textContent); the gem-name gate excludes
-// uniques/bases, which also use .poe-item.
+// maxroll renders gems two ways (both confirmed in the live browser):
+//   - inline prose:   <span class="poe-item" data-poe-text="Name">
+//   - skills widget:  <div class="skills_SkillEntry__name__HASH">Name</div>
+// The skills widget needs WebGL and does NOT render in headless Firefox, so it can
+// only be verified in a real browser. maxroll is a React SPA that replaces gem nodes
+// on hover, so we use event delegation on `document` (capture phase) rather than
+// per-element listeners. The panel is PINNED to a fixed corner (not cursor-following)
+// because maxroll shows its own big native tooltip at the cursor; a fixed high-contrast
+// corner panel is always visible and never overlaps it. The gem-name gate excludes
+// uniques/bases (which also use .poe-item).
 const ALIASES = {
   // 'maxroll name': 'wiki page name'   // fill in as mismatches are found
 };
@@ -26,7 +27,7 @@ function makeTooltipEl() {
   return el;
 }
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 
 // maxroll renders gems two ways: inline prose as `.poe-item[data-poe-text]`, and
 // the skills-widget entries as `div[class*="SkillEntry"]` (CSS-module hashed).
@@ -78,18 +79,6 @@ function gemNameOf(el) {
   }
 
   idle();
-
-  // TEMP DIAGNOSTIC (one round): confirm the SkillEntry match in the live page.
-  const dbg = document.createElement('div');
-  dbg.id = 'poe1-gh-debug';
-  dbg.textContent = 'dbg: (hover a gem)';
-  document.body.appendChild(dbg);
-  document.addEventListener('mouseover', (e) => {
-    const el = e.target.closest && e.target.closest(GEM_SEL);
-    const nm = el ? gemNameOf(el) : '';
-    const gem = el ? (lookup(nm) ? `KNOWN:${nm}` : `unknown:${nm}`) : 'no';
-    dbg.textContent = `dbg: ${e.target.tagName}.${(e.target.className || '').toString().slice(0, 22)} | match:${el ? 'yes' : 'no'} | gem:${gem}`;
-  }, true);
 
   // Delegated (capture phase) so it survives React re-renders and can't be
   // blocked by maxroll's own stopPropagation on the element.
