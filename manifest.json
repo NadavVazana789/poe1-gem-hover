@@ -1,12 +1,9 @@
 {
   "manifest_version": 3,
   "name": "PoE1 Gem Hover",
-  "version": "1.6.0",
-  "description": "Hover a skill gem on a maxroll.gg PoE1 build guide to see the earliest vendor purchase and free quest reward, by class.",
+  "version": "1.7.0",
+  "description": "Hover a skill gem on maxroll.gg PoE1 pages to see the earliest vendor purchase and free quest reward, by class.",
   "browser_specific_settings": { "gecko": { "id": "poe1-gem-hover@local" } },
-  "permissions": ["storage", "alarms"],
-  "host_permissions": ["https://pathofexile.fandom.com/*"],
-  "background": { "scripts": ["transform.js", "background.js"] },
   "content_scripts": [
     {
       "matches": ["https://maxroll.gg/poe/*"],
