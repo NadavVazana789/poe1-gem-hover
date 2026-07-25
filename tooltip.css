@@ -20,3 +20,14 @@
   color: #f0d9a0;
   margin-bottom: 3px;
 }
+/* idle "extension is running" badge: dimmer + more compact */
+#poe1-gem-hover-tip.poe1-gh-idle {
+  opacity: 0.72;
+  padding: 6px 10px;
+  font-size: 12px;
+  min-width: 0;
+}
+#poe1-gem-hover-tip.poe1-gh-idle .poe1-gh-name {
+  font-size: 12.5px;
+  margin-bottom: 1px;
+}

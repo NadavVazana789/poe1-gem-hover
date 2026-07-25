@@ -30,12 +30,14 @@ function gemNameOf(el) {
   return (el.dataset && el.dataset.poeText) || el.textContent.trim();
 }
 
+const VERSION = '1.2.0';
+
 (async () => {
   const gems = await loadGems();
   const tip = makeTooltipEl();
   let hideTimer;
   let currentName = null;
-  console.log(`[PoE1 Gem Hover] active — ${Object.keys(gems).length} gems loaded`);
+  console.log(`[PoE1 Gem Hover] v${VERSION} active — ${Object.keys(gems).length} gems loaded`);
 
   function lookup(rawName) {
     const name = (rawName || '').trim();
@@ -43,21 +45,31 @@ function gemNameOf(el) {
     return gems[key] ? { key, entry: gems[key] } : null;
   }
 
-  function show(key, entry) {
-    clearTimeout(hideTimer);
-    currentName = key;
+  function render(lines, dim) {
     tip.textContent = '';
-    const lines = GemFormat.formatTooltip(key, entry);
+    tip.classList.toggle('poe1-gh-idle', !!dim);
     lines.forEach((line, i) => {
       const div = document.createElement('div');
       div.textContent = line;
       if (i === 0) div.className = 'poe1-gh-name';
       tip.appendChild(div);
     });
-    tip.hidden = false;
+    tip.hidden = false; // panel is always visible (also a load indicator)
   }
 
-  function hide() { tip.hidden = true; currentName = null; }
+  // Idle state doubles as a "the extension is running" badge.
+  function idle() {
+    currentName = null;
+    render([`◆ PoE1 Gem Hover v${VERSION}`, `${Object.keys(gems).length} gems — hover a skill gem`], true);
+  }
+
+  function show(key, entry) {
+    clearTimeout(hideTimer);
+    currentName = key;
+    render(GemFormat.formatTooltip(key, entry), false);
+  }
+
+  idle();
 
   // Delegated (capture phase) so it survives React re-renders and can't be
   // blocked by maxroll's own stopPropagation on the element.
@@ -72,6 +84,6 @@ function gemNameOf(el) {
     const el = e.target.closest && e.target.closest('.poe-item');
     if (!el) return;
     const hit = lookup(gemNameOf(el));
-    if (hit && hit.key === currentName) hideTimer = setTimeout(hide, 200);
+    if (hit && hit.key === currentName) hideTimer = setTimeout(idle, 200);
   }, true);
 })();
