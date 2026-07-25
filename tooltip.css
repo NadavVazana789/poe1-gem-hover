@@ -1,0 +1,17 @@
+#poe1-gem-hover-tip {
+  position: absolute;
+  z-index: 2147483647;
+  max-width: 320px;
+  padding: 6px 9px;
+  background: #14171c;
+  color: #e6e6e6;
+  border: 1px solid #3a3f47;
+  border-radius: 4px;
+  font: 12px/1.35 system-ui, sans-serif;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+#poe1-gem-hover-tip > div:first-child {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
