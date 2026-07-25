@@ -32,14 +32,17 @@ jobs:
       - name: Rebuild data/gems.json
         run: node tools/gen-gems.cjs
 
-      - name: Commit & push if changed
+      - name: Commit & push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/gems.json
+          # heartbeat: always changes, so there's daily activity — this keeps the
+          # scheduled workflow from being auto-disabled after 60 quiet days.
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > data/last-refresh.txt
+          git add data/gems.json data/last-refresh.txt
           if git diff --cached --quiet; then
-            echo "no change"
+            echo "nothing to commit"
           else
-            git commit -m "data: refresh gems.json from poewiki ($(date -u +%F))"
+            git commit -m "data: refresh from poewiki ($(date -u +%F))"
             git push
           fi
